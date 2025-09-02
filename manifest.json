@@ -1,7 +1,7 @@
 {
-  "name": "Tic-Tac-Toe",
+  "name": "Tic-Tac-Toe (Offline)",
   "short_name": "TicTacToe",
-  "description": "AI, local & online multiplayer, timers, replay autoplay, ratings, bigger boards, and offline support.",
+  "description": "Offline Tic-Tac-Toe with AI, local 2P, timers, replay, undo, themes, and sounds.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0f172a",
