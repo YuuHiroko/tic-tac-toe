@@ -4,7 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#276ef1" />
-  <title>Tic-Tac-Toe — AI, PvP, Online, Replay, PWA</title>
+  <title>Tic-Tac-Toe — AI, PvP, Online, Replay, Timers, Rated</title>
+
+  <!-- Firebase (optional for Quick Connect). Leave these tags; add config in script.js -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -15,6 +21,11 @@
     <header class="header">
       <h1>Tic‑Tac‑Toe</h1>
       <div class="actions">
+        <label class="switch">
+          <input id="ratedToggle" type="checkbox" />
+          <span class="slider"></span>
+          <span class="label">Rated</span>
+        </label>
         <button id="themeToggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">🌙</button>
         <label class="switch">
           <input id="soundToggle" type="checkbox" checked />
@@ -24,7 +35,7 @@
       </div>
     </header>
 
-    <p class="sub">Play vs Computer, with a friend, or online. Bigger boards supported. Hard is perfect on 3×3; strong with heuristics on larger boards.</p>
+    <p class="sub">Play vs Computer, with a friend, or online. Bigger boards, timers, replay, and optional ratings. Hard is perfect on 3×3; strong on larger boards.</p>
 
     <div class="controls">
       <label class="field">
@@ -49,9 +60,7 @@
 
       <label class="field">
         <span>Win length</span>
-        <select id="winLen" aria-label="Win length">
-          <!-- options filled dynamically -->
-        </select>
+        <select id="winLen" aria-label="Win length"></select>
       </label>
 
       <label class="field">
@@ -66,8 +75,8 @@
       <label class="field">
         <span>Who starts</span>
         <select id="first" aria-label="Who starts">
-          <option value="player" selected>Player (AI mode)</option>
-          <option value="computer">Computer (AI mode)</option>
+          <option value="player" selected>Player (AI)</option>
+          <option value="computer">Computer (AI)</option>
           <option value="p1">Player 1 (PvP)</option>
           <option value="p2">Player 2 (PvP)</option>
           <option value="X">X (Online)</option>
@@ -85,6 +94,17 @@
         </select>
       </label>
 
+      <label class="field">
+        <span>Per-move timer</span>
+        <select id="timerSelect" aria-label="Per-move timer">
+          <option value="off" selected>Off</option>
+          <option value="10">10s</option>
+          <option value="20">20s</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+        </select>
+      </label>
+
       <div class="row">
         <button id="newGame" class="primary" aria-label="Start new game">New Game</button>
         <button id="undoBtn" aria-label="Undo last move">Undo</button>
@@ -99,7 +119,7 @@
 
       <div class="row">
         <button id="importReplay" aria-label="Import replay JSON">Import Replay</button>
-        <button id="openReplay" aria-label="Replay last game" disabled>Replay Last</button>
+        <button id="openReplay" aria-label="Replay Last" disabled>Replay Last</button>
       </div>
     </div>
 
@@ -109,9 +129,12 @@
       <div id="rightLabel">Computer (O): <strong id="scoreRight">0</strong></div>
     </div>
 
+    <div id="ratingLine" class="rating-line" aria-live="polite"></div>
+
     <div id="board" class="board" role="grid" aria-label="Tic Tac Toe board" tabindex="0"></div>
 
     <div id="status" class="status" aria-live="polite" aria-atomic="true">Your turn — place X</div>
+    <div id="timerHud" class="timer-hud" aria-live="polite" aria-atomic="true"></div>
 
     <details class="history">
       <summary>Move history</summary>
@@ -131,19 +154,32 @@
     </div>
   </div>
 
-  <!-- Online connect panel -->
+  <!-- Online connect panel (manual + Firebase Quick Connect) -->
   <div id="onlineOverlay" class="panel-overlay" aria-hidden="true">
     <div class="panel" role="dialog" aria-modal="true" aria-labelledby="onlineTitle">
       <button id="closeOnline" class="panel-close" aria-label="Close">×</button>
       <h2 id="onlineTitle">Online — WebRTC</h2>
 
+      <h3>Quick Connect (Firebase)</h3>
+      <p class="sub">Enter a short room code (e.g., GAME42). One clicks Host, the other Join. Requires Firebase config.</p>
+      <div class="quick-row">
+        <input id="fbRoomCode" placeholder="Room code (A–Z, 0–9)" maxlength="12" />
+        <button id="fbHostBtn" class="primary">Host via Firebase</button>
+        <button id="fbJoinBtn">Join via Firebase</button>
+        <button id="fbDisconnectBtn" class="danger" disabled>Disconnect</button>
+      </div>
+      <div id="fbStatus" class="sub">Firebase: idle</div>
+
+      <hr />
+
+      <h3>Manual (Copy/Paste)</h3>
       <div class="tabs">
         <button id="tabHost" class="tab active">Host</button>
         <button id="tabJoin" class="tab">Join</button>
       </div>
 
       <div id="hostView">
-        <p>1) Click Generate Offer. 2) Copy and send to your friend. 3) Paste their Answer below and Connect.</p>
+        <p>1) Generate Offer. 2) Copy and send to your friend. 3) Paste their Answer and Connect.</p>
         <div class="field">
           <button id="makeOffer" class="primary">Generate Offer</button>
           <button id="copyOffer" disabled>Copy Offer</button>
@@ -184,12 +220,21 @@
         <button id="stepBack">⟵ Prev</button>
         <button id="stepForward">Next ⟶</button>
         <button id="restartReplay">Restart</button>
+        <label class="field small">
+          <span>Speed</span>
+          <select id="replaySpeed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
+        </label>
+        <button id="replayPlay">▶️ Play</button>
       </div>
     </div>
   </div>
 
   <input id="fileInput" type="file" accept="application/json" hidden />
-
   <script src="script.js"></script>
 </body>
 </html>
