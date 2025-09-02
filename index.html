@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#276ef1" />
+  <title>Tic-Tac-Toe — AI, PvP, Online, Replay, PWA</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <noscript>This app needs JavaScript enabled.</noscript>
+
+  <div class="container card" role="application" aria-label="Tic Tac Toe game">
+    <header class="header">
+      <h1>Tic‑Tac‑Toe</h1>
+      <div class="actions">
+        <button id="themeToggle" class="icon-btn" aria-label="Toggle theme" title="Toggle theme">🌙</button>
+        <label class="switch">
+          <input id="soundToggle" type="checkbox" checked />
+          <span class="slider"></span>
+          <span class="label">Sound</span>
+        </label>
+      </div>
+    </header>
+
+    <p class="sub">Play vs Computer, with a friend, or online. Bigger boards supported. Hard is perfect on 3×3; strong with heuristics on larger boards.</p>
+
+    <div class="controls">
+      <label class="field">
+        <span>Mode</span>
+        <select id="mode" aria-label="Game mode">
+          <option value="ai" selected>Vs Computer</option>
+          <option value="pvp">2 Players (local)</option>
+          <option value="online">Online (WebRTC)</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Board size</span>
+        <select id="boardSize" aria-label="Board size">
+          <option value="3" selected>3 × 3</option>
+          <option value="4">4 × 4</option>
+          <option value="5">5 × 5</option>
+          <option value="6">6 × 6</option>
+          <option value="7">7 × 7</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Win length</span>
+        <select id="winLen" aria-label="Win length">
+          <!-- options filled dynamically -->
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Difficulty</span>
+        <select id="difficulty" aria-label="Difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Who starts</span>
+        <select id="first" aria-label="Who starts">
+          <option value="player" selected>Player (AI mode)</option>
+          <option value="computer">Computer (AI mode)</option>
+          <option value="p1">Player 1 (PvP)</option>
+          <option value="p2">Player 2 (PvP)</option>
+          <option value="X">X (Online)</option>
+          <option value="O">O (Online)</option>
+          <option value="random">Random</option>
+          <option value="alternate">Alternate</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span>Your mark</span>
+        <select id="yourMark" aria-label="Choose your mark">
+          <option value="X" selected>X</option>
+          <option value="O">O</option>
+        </select>
+      </label>
+
+      <div class="row">
+        <button id="newGame" class="primary" aria-label="Start new game">New Game</button>
+        <button id="undoBtn" aria-label="Undo last move">Undo</button>
+        <button id="resetScore" aria-label="Reset scoreboard">Reset Score</button>
+      </div>
+
+      <div class="row">
+        <button id="connectOnline" aria-label="Connect online">Connect Online</button>
+        <button id="disconnectOnline" aria-label="Disconnect online" disabled>Disconnect</button>
+        <button id="exportGame" aria-label="Export game history">Export</button>
+      </div>
+
+      <div class="row">
+        <button id="importReplay" aria-label="Import replay JSON">Import Replay</button>
+        <button id="openReplay" aria-label="Replay last game" disabled>Replay Last</button>
+      </div>
+    </div>
+
+    <div class="score" aria-live="polite" aria-atomic="true">
+      <div id="leftLabel">You (X): <strong id="scoreLeft">0</strong></div>
+      <div>Draws: <strong id="scoreDraw">0</strong></div>
+      <div id="rightLabel">Computer (O): <strong id="scoreRight">0</strong></div>
+    </div>
+
+    <div id="board" class="board" role="grid" aria-label="Tic Tac Toe board" tabindex="0"></div>
+
+    <div id="status" class="status" aria-live="polite" aria-atomic="true">Your turn — place X</div>
+
+    <details class="history">
+      <summary>Move history</summary>
+      <ol id="historyList" class="history-list" aria-live="polite"></ol>
+    </details>
+  </div>
+
+  <!-- Game Over modal -->
+  <div id="modalOverlay" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button id="closeModal" class="modal-close" aria-label="Close">×</button>
+      <h2 id="modalTitle">Game Over</h2>
+      <p id="modalSubtitle" class="modal-sub"></p>
+      <div class="modal-actions">
+        <button id="playAgain" class="primary">Play again</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Online connect panel -->
+  <div id="onlineOverlay" class="panel-overlay" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="onlineTitle">
+      <button id="closeOnline" class="panel-close" aria-label="Close">×</button>
+      <h2 id="onlineTitle">Online — WebRTC</h2>
+
+      <div class="tabs">
+        <button id="tabHost" class="tab active">Host</button>
+        <button id="tabJoin" class="tab">Join</button>
+      </div>
+
+      <div id="hostView">
+        <p>1) Click Generate Offer. 2) Copy and send to your friend. 3) Paste their Answer below and Connect.</p>
+        <div class="field">
+          <button id="makeOffer" class="primary">Generate Offer</button>
+          <button id="copyOffer" disabled>Copy Offer</button>
+        </div>
+        <textarea id="offerOut" placeholder="Offer (copy this)"></textarea>
+
+        <div class="field" style="margin-top:8px;">
+          <button id="connectWithAnswer" disabled>Set Remote Answer & Connect</button>
+        </div>
+        <textarea id="answerIn" placeholder="Paste Answer here"></textarea>
+      </div>
+
+      <div id="joinView" hidden>
+        <p>1) Paste Host’s Offer. 2) Create Answer. 3) Copy and send back.</p>
+        <div class="field">
+          <button id="setOffer">Set Remote Offer</button>
+        </div>
+        <textarea id="offerIn" placeholder="Paste Offer here"></textarea>
+
+        <div class="field" style="margin-top:8px;">
+          <button id="makeAnswer" class="primary" disabled>Create Answer</button>
+          <button id="copyAnswer" disabled>Copy Answer</button>
+        </div>
+        <textarea id="answerOut" placeholder="Answer (copy this)"></textarea>
+      </div>
+
+      <p id="onlineStatus" class="sub" style="margin-top:10px;">Not connected</p>
+    </div>
+  </div>
+
+  <!-- Replay panel -->
+  <div id="replayOverlay" class="panel-overlay" aria-hidden="true">
+    <div class="panel" role="dialog" aria-modal="true" aria-labelledby="replayTitle">
+      <button id="closeReplay" class="panel-close" aria-label="Close">×</button>
+      <h2 id="replayTitle">Replay</h2>
+      <p class="sub" id="replayMeta"></p>
+      <div class="replay-controls">
+        <button id="stepBack">⟵ Prev</button>
+        <button id="stepForward">Next ⟶</button>
+        <button id="restartReplay">Restart</button>
+      </div>
+    </div>
+  </div>
+
+  <input id="fileInput" type="file" accept="application/json" hidden />
+
+  <script src="script.js"></script>
+</body>
+</html>
