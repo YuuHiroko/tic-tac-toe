@@ -1,13 +1,13 @@
 {
   "name": "Tic-Tac-Toe",
   "short_name": "TicTacToe",
-  "description": "Tic-Tac-Toe with AI, local and online multiplayer, undo, replay, themes, sounds, bigger boards, and offline support.",
+  "description": "AI, local & online multiplayer, timers, replay autoplay, ratings, bigger boards, and offline support.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#276ef1",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }
