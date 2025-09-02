@@ -1,45 +1,17 @@
-const CACHE_NAME = "ttt-v2";
-const ASSETS = [
-  "./",
-  "./index.html",
-  "./styles.css",
-  "./script.js",
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => (k === CACHE_NAME ? null : caches.delete(k)))))
-  );
-  self.clients.claim();
-});
-
-self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  event.respondWith(
-    caches.match(req).then(cached => {
+const CACHE_NAME = "ttt-v3";
+const ASSETS = ["./","./index.html","./styles.css","./script.js","./manifest.json","./icons/icon-192.png","./icons/icon-512.png"];
+self.addEventListener("install", e=>{ e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(ASSETS))); self.skipWaiting(); });
+self.addEventListener("activate", e=>{ e.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>k===CACHE_NAME?null:caches.delete(k))))); self.clients.claim(); });
+self.addEventListener("fetch", e=>{
+  e.respondWith(
+    caches.match(e.request).then(cached=>{
       if (cached) return cached;
-      return fetch(req).then(resp => {
-        const copy = resp.clone();
-        if (req.method === "GET") {
-          try {
-            const url = new URL(req.url);
-            if (url.origin === location.origin) {
-              caches.open(CACHE_NAME).then(cache => cache.put(req, copy));
-            }
-          } catch {}
+      return fetch(e.request).then(res=>{
+        if (e.request.method==="GET"){
+          try{ const url=new URL(e.request.url); if (url.origin===location.origin){ const copy=res.clone(); caches.open(CACHE_NAME).then(c=>c.put(e.request,copy)); } }catch{}
         }
-        return resp;
-      }).catch(() => {
-        if (req.mode === "navigate") return caches.match("./index.html");
-      })
+        return res;
+      }).catch(()=> e.request.mode==="navigate" ? caches.match("./index.html") : undefined)
     })
   );
 });
